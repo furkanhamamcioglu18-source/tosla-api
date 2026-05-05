@@ -42,10 +42,20 @@ app.post("/pay", async (req, res) => {
         timeSpan: timeSpan,
         hash: hash,
 
-        orderId: "ORD-" + Date.now(),
+        orderId: const body = {
+  clientId: parseInt(clientId),
+  apiUser,
+  rnd,
+  timeSpan,
+  hash,
+  orderId: Date.now().toString(),
+  callbackUrl: "https://tosla-api.onrender.com/callback",
+  amount,
+  currency: 949
+};
         amount: 200000, // 2000 TL
         currency: 949,
-        callbackUrl: "https://example.com"
+        callbackUrl: "https://tosla-api.onrender.com/callback",
       }
     );
 
@@ -58,3 +68,47 @@ app.post("/pay", async (req, res) => {
 });
 
 app.listen(3000, () => console.log("çalışıyor"));
+
+app.post("/callback", (req, res) => {
+  try {
+    const {
+      clientId,
+      apiUser,
+      orderId,
+      rnd,
+      timeSpan,
+      hash,
+      status,
+      amount,
+      transactionId
+    } = req.body;
+
+    const apiPass = process.env.API_PASS;
+
+    const crypto = require("crypto");
+
+    const hashString =
+      apiPass + clientId + apiUser + orderId + rnd + timeSpan + status + amount;
+
+    const calculatedHash = crypto
+      .createHash("sha512")
+      .update(hashString)
+      .digest("base64");
+
+    if (calculatedHash !== hash) {
+      console.log("❌ HASH HATALI");
+      return res.status(400).send("hash error");
+    }
+
+    if (status === "Onaylandı") {
+      console.log("✅ ÖDEME BAŞARILI", transactionId);
+    } else {
+      console.log("❌ ÖDEME BAŞARISIZ");
+    }
+
+    res.send("OK");
+  } catch (err) {
+    console.log("HATA:", err);
+    res.status(500).send("error");
+  }
+});
